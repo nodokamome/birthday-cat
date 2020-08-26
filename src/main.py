@@ -18,24 +18,33 @@ dt_now = datetime.datetime.now()
 # 接続に必要なオブジェクトを生成
 client = discord.Client()
 
+isSend = True
 # 任意のチャンネルで挨拶する非同期関数を定義
+
+
 async def greet():
     channel = client.get_channel(CHANNEL_ID)
     await channel.send('おはようにゃ！')
 
-async def entry():
-    channel = client.get_channel(CHANNEL_ID)
-    await channel.send('エントリーするにゃん！')
 
-@tasks.loop(seconds=300)
+async def birthday():
+    channel = client.get_channel(CHANNEL_ID)
+    await channel.send('誕生！おめでとう！にゃああああああ！！！')
+
+
+@tasks.loop(seconds=1)
 async def send_message_every_sec():
+    global isSend
     channel = client.get_channel(CHANNEL_ID)
     dt_now = datetime.datetime.now()
-    #await channel.send("["+dt_now.strftime('%Y年%m月%d日 %H:%M:%S')+"] " + "1秒経ったよ")
+    # weekday()=0 月 weekday()=6 日
+    # await channel.send("["+dt_now.strftime('%Y年%m月%d日 %H:%M:%S')+"] " + "1秒経ったよ")
     #print("["+dt_now.strftime('%Y年%m月%d日 %H:%M:%S')+"] " + "1秒経ったよ")
     # 準備ができたときに実行
-    if datetime.date.today().weekday() == 6:
-        await entry()
+    if datetime.date.today() == datetime.date(2020, 8, 27) and isSend:
+        isSend = False
+        await birthday()
+
 
 @client.event
 async def on_ready():
@@ -44,6 +53,7 @@ async def on_ready():
     await greet()
     print('おはようにゃ！')
     send_message_every_sec.start()
+
 
 # メッセージ受信時に動作する処理
 
