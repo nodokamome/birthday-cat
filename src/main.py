@@ -4,13 +4,15 @@ import asyncio
 import time
 import datetime
 import discord
+import re
 import json
 from collections import OrderedDict
 import pprint
 
 from discord.ext import tasks
 from dotenv import load_dotenv
-from datetime import datetime as dt
+import datetime as dt
+from datetime import datetime, date, timedelta
 
 # .env取得
 load_dotenv()
@@ -18,7 +20,6 @@ load_dotenv()
 # 環境変数から取得
 TOKEN = os.getenv("TOKEN")
 CHANNEL_ID = (int)(os.getenv("CHANNEL_ID"))
-dt_now = datetime.datetime.now()
 
 # 接続に必要なオブジェクトを生成
 client = discord.Client()
@@ -39,19 +40,37 @@ def birthday(id):
     json_open = open("../data/birthday.json", "r")
     json_load = json.load(json_open)
     for i in range(len(json_load)):
-        # if json_load[i]["birthday"] == datetime.date.today():
         if json_load[i]["id"] == id:
             return json_load[i]["name"]+" 誕生日"+"【"+json_load[i]["birthday"]+"】"+"欲しいものリスト: "+json_load[i]["wish"]
 
 
-# 誕生日のチェック
-def birthdayCheck():
-    tdatetime = dt.now()
-    tstr = tdatetime.strftime('%m/%d')
+# 一週間後誕生日のチェック
+def nextweekbirthdayCheck():
+    global isSend
+    today = dt.date.today()
+    nextweek = today + timedelta(days=7)
+    tstr1 = datetime.strftime(nextweek, '%m/%d')
+    tstr2 = datetime.strftime(nextweek, '%-m/%-d')
     json_open = open("../data/birthday.json", "r")
     json_load = json.load(json_open)
     for i in range(len(json_load)):
-        if json_load[i]["birthday"] == tstr:
+        if json_load[i]["birthday"] == tstr1 or json_load[i]["birthday"] == tstr2:
+            isSend = True
+            return int(i)
+    return -1
+
+
+# 誕生日のチェック
+def birthdayCheck():
+    global isSend
+    today = dt.date.today()
+    tstr1 = today.strftime('%m/%d')
+    tstr2 = today.strftime('%-m/%-d')
+    json_open = open("../data/birthday.json", "r")
+    json_load = json.load(json_open)
+    for i in range(len(json_load)):
+        if json_load[i]["birthday"] == tstr1 or json_load[i]["birthday"] == tstr2:
+            isSend = True
             return int(i)
     return -1
 
@@ -63,10 +82,9 @@ def birthdayAll():
     json_load = json.load(json_open)
     result += "誕生日&欲しいものリスト\n------------\n"
     for i in range(len(json_load)):
-        if json_load[i]["birthday"] == datetime.date.today():
-            result += str(i)+"."+json_load[i]["name"]+"  " + \
-                json_load[i]["birthday"]+"  " + \
-                ":"+json_load[i]["wish"]+"\n"
+        result += str(i)+"."+json_load[i]["name"]+"  " + \
+            json_load[i]["birthday"]+"  " + \
+            ":"+json_load[i]["wish"]+"\n"
     return result
 
 
@@ -77,12 +95,11 @@ async def send_message_every_sec():
     # weekday()=0 月 weekday()=6 日
     # await channel.send("["+dt_now.strftime('%Y年%m月%d日 %H:%M:%S')+"] " + "1秒経ったよ")
     # print("["+dt_now.strftime('%Y年%m月%d日 %H:%M:%S')+"] " + "1秒経ったよ")
-    # 準備ができたときに実行
     if birthdayCheck() != -1 and isSend:
         json_open = open("../data/birthday.json", "r")
         json_load = json.load(json_open)
         name = json_load[birthdayCheck()]["name"]+" さん"
-        await channel.send(name+"、お誕生おめでとう！\n"+"みんなでお祝いしましょう！\n"+"欲しいものリスト"+json_load[birthdayCheck()]["wish"])
+        await channel.send(name+"、お誕生おめでとう！\n"+"みんなでお祝いしましょう！\n"+"欲しいものリスト:"+json_load[birthdayCheck()]["wish"])
         isSend = False
     else:
         isSend = True
@@ -111,18 +128,35 @@ async def on_message(message):
     if message.content == '$date':
         dt_now = datetime.datetime.now()
         await message.channel.send(dt_now.strftime('%Y年%m月%d日 %H:%M:%S'))
-    # 「$birthday」→ 名前、誕生日、欲しいものリストを返す
-    if message.content == '$birthday':
+    # 「$mybirthday」→ 名前、誕生日、欲しいものリストを返す
+    if message.content == '$mybirthday':
         await message.channel.send(birthday(message.author.id))
-    if message.content == '$x':
+    # 「$birthday MM/DD」
+    if message.content.startswith('$birthday '):
+        if 1 <= len(re.findall(r'[0-9]{1,2}/[0-9]{1,2}', message.content)):
+            tmp_birthday = re.findall(
+                r'[0-9]{1,2}/[0-9]{1,2}', message.content)[0]
+            print(tmp_birthday)
+            json_open = open("../data/birthday.json", "r")
+            json_load = json.load(json_open)
+            for i in range(len(json_load)):
+                if json_load[i]["id"] == message.author.id:
+                    json_load[i]["birthday"] = tmp_birthday
+                    json_open = open("../data/birthday.json", "w")
+                    json_open.write(json.dumps(json_load))
+                    await message.channel.send(json_load[i]["name"] + "さんの誕生日を更新しました")
+    # 「$wish 」
+    if message.content.startswith('$wish '):
+        wish = message.content[6:]
+        print(wish)
         json_open = open("../data/birthday.json", "r")
         json_load = json.load(json_open)
         for i in range(len(json_load)):
             if json_load[i]["id"] == message.author.id:
-                json_load[i]["birthday"] = "03/27"
+                json_load[i]["wish"] = wish
                 json_open = open("../data/birthday.json", "w")
                 json_open.write(json.dumps(json_load))
-                await message.channel.send(json_load[i]["name"]+"さんの誕生日を更新しました")
+                await message.channel.send(json_load[i]["name"]+"さんの欲しいものを更新しました")
     if message.content == '$birthday-all':
         await message.channel.send(birthdayAll())
     if message.content == '$hello':
