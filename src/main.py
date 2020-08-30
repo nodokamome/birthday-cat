@@ -2,13 +2,11 @@
 import os
 import asyncio
 import time
-import datetime
 import discord
 import re
 import json
 from collections import OrderedDict
 import pprint
-
 from discord.ext import tasks
 from dotenv import load_dotenv
 import datetime as dt
@@ -19,24 +17,26 @@ load_dotenv()
 
 # 環境変数から取得
 TOKEN = os.getenv("TOKEN")
-CHANNEL_ID = (int)(os.getenv("CHANNEL_ID"))
+TOKIMEMO_CHANNEL_ID = (int)(os.getenv("TOKIMEMO_CHANNEL_ID"))
+IPPAN_CHANNEL_ID = (int)(os.getenv("IPPAN_CHANNEL_ID"))
 
 # 接続に必要なオブジェクトを生成
 client = discord.Client()
 
 
 # 送信フラグ
-isSend = True
+isCheck = True
+isNextWeekCheck = True
 
 
 # 挨拶大事
 async def greet():
-    channel = client.get_channel(CHANNEL_ID)
+    channel = client.get_channel(TOKIMEMO_CHANNEL_ID)
     await channel.send('おはようにゃ！')
 
 
-# 聞いてきた人の登録情報を返す
-def birthday(id):
+#「$mybirthday」 聞いてきた人の登録情報を返す
+def mybirthday(id):
     json_open = open("../data/birthday.json", "r")
     json_load = json.load(json_open)
     for i in range(len(json_load)):
@@ -47,6 +47,7 @@ def birthday(id):
 # 一週間後誕生日のチェック
 def nextweekbirthdayCheck():
     global isSend
+    list = []
     today = dt.date.today()
     nextweek = today + timedelta(days=7)
     tstr1 = datetime.strftime(nextweek, '%m/%d')
@@ -55,14 +56,18 @@ def nextweekbirthdayCheck():
     json_load = json.load(json_open)
     for i in range(len(json_load)):
         if json_load[i]["birthday"] == tstr1 or json_load[i]["birthday"] == tstr2:
-            isSend = True
-            return int(i)
-    return -1
+            isNextWeekCheck = True
+            list.append(i)
+    if len(list) == 0:
+        return -1
+    else:
+        return list
 
 
 # 誕生日のチェック
 def birthdayCheck():
     global isSend
+    list = []
     today = dt.date.today()
     tstr1 = today.strftime('%m/%d')
     tstr2 = today.strftime('%-m/%-d')
@@ -70,12 +75,15 @@ def birthdayCheck():
     json_load = json.load(json_open)
     for i in range(len(json_load)):
         if json_load[i]["birthday"] == tstr1 or json_load[i]["birthday"] == tstr2:
-            isSend = True
-            return int(i)
-    return -1
+            isCheck = True
+            list.append(i)
+    if len(list) == 0:
+        return -1
+    else:
+        return list
 
 
-# 全員の誕生日を表示させる
+# 「$birthdayAll」全員の誕生日を表示させる
 def birthdayAll():
     result = ""
     json_open = open("../data/birthday.json", "r")
@@ -88,21 +96,43 @@ def birthdayAll():
     return result
 
 
+def help():
+    message = ""
+    message += "$mybirthday: 自分の誕生日と欲しいものリスト表示\n\n"
+    message += "$birthday MM/DD: 誕生日を登録\n\n"
+    message += "$wish hogehoge: 欲しいものを登録。アマゾン欲しいものリストや具体例、etc\n\n"
+    message += "$birthdayAll: 全員の誕生日と欲しいものリスト表示\n\n"
+    message += "$neko: にゃ-ん\n\n"
+    message += "$help :誕生日キャンとの使い方\n\n"
+    return message
+
+
 @tasks.loop(seconds=60)
 async def send_message_every_sec():
-    global isSend
-    channel = client.get_channel(CHANNEL_ID)
-    # weekday()=0 月 weekday()=6 日
-    # await channel.send("["+dt_now.strftime('%Y年%m月%d日 %H:%M:%S')+"] " + "1秒経ったよ")
-    # print("["+dt_now.strftime('%Y年%m月%d日 %H:%M:%S')+"] " + "1秒経ったよ")
-    if birthdayCheck() != -1 and isSend:
+    global isCheck
+    global isNextWeekCheck
+    tokimemo_channel = client.get_channel(TOKIMEMO＿CHANNEL_ID)
+    ippan_channel = client.get_channel(IPPAN_CHANNEL_ID)
+    if nextweekbirthdayCheck() != -1 and isNextWeekCheck:
         json_open = open("../data/birthday.json", "r")
         json_load = json.load(json_open)
-        name = json_load[birthdayCheck()]["name"]+" さん"
-        await channel.send(name+"、お誕生おめでとう！\n"+"みんなでお祝いしましょう！\n"+"欲しいものリスト:"+json_load[birthdayCheck()]["wish"])
-        isSend = False
+        list = nextweekbirthdayCheck()
+        for i in range(len(list)):
+            name = json_load[list[i]]["name"]+" さんが\n"
+            await ippan_channel.send(name+json_load[list[i]]["birthday"]+"に誕生日です。\nお祝い準備しましょう！"+json_load[list[i]]["wish"])
+        isNextWeekCheck = False
     else:
-        isSend = True
+        isNextWeekCheck = True
+    if birthdayCheck() != -1 and isCheck:
+        json_open = open("../data/birthday.json", "r")
+        json_load = json.load(json_open)
+        list = birthdayCheck()
+        for i in range(len(list)):
+            name = json_load[list[i]]["name"]+" さん"
+            await ippan_channel.send(name+"、お誕生おめでとう！（誕生日:"+json_load[list[i]]["birthday"]+")\n"+"みんなでお祝いしましょう！\n"+"欲しいものリスト:"+json_load[list[i]]["wish"])
+        isCheck = False
+    else:
+        isCheck = True
 
 
 # 起動時
@@ -124,14 +154,10 @@ async def on_message(message):
     # 「$neko」→「にゃーん」と返す
     if message.content == '$neko':
         await message.channel.send('にゃーん')
-    # 「$date」→ 日付を返す('%Y年%m月%d日 %H:%M:%S')
-    if message.content == '$date':
-        dt_now = datetime.datetime.now()
-        await message.channel.send(dt_now.strftime('%Y年%m月%d日 %H:%M:%S'))
     # 「$mybirthday」→ 名前、誕生日、欲しいものリストを返す
     if message.content == '$mybirthday':
-        await message.channel.send(birthday(message.author.id))
-    # 「$birthday MM/DD」
+        await message.channel.send(mybirthday(message.author.id))
+    # 「$birthday MM/DD」 → 誕生日を登録
     if message.content.startswith('$birthday '):
         if 1 <= len(re.findall(r'[0-9]{1,2}/[0-9]{1,2}', message.content)):
             tmp_birthday = re.findall(
@@ -141,11 +167,14 @@ async def on_message(message):
             json_load = json.load(json_open)
             for i in range(len(json_load)):
                 if json_load[i]["id"] == message.author.id:
-                    json_load[i]["birthday"] = tmp_birthday
-                    json_open = open("../data/birthday.json", "w")
-                    json_open.write(json.dumps(json_load))
-                    await message.channel.send(json_load[i]["name"] + "さんの誕生日を更新しました")
-    # 「$wish 」
+                    if json_load[i]["birthday"] != "":
+                        await message.channel.send("誕生日がすでに登録されてますよ！\n間違えて登録した場合は、okamoさんに連絡してね")
+                    else:
+                        json_load[i]["birthday"] = tmp_birthday
+                        json_open = open("../data/birthday.json", "w")
+                        json_open.write(json.dumps(json_load))
+                        await message.channel.send(json_load[i]["name"] + "さんの誕生日を更新しました")
+    # 「$wish 」→ 欲しいものリストを登録
     if message.content.startswith('$wish '):
         wish = message.content[6:]
         print(wish)
@@ -157,17 +186,11 @@ async def on_message(message):
                 json_open = open("../data/birthday.json", "w")
                 json_open.write(json.dumps(json_load))
                 await message.channel.send(json_load[i]["name"]+"さんの欲しいものを更新しました")
-    if message.content == '$birthday-all':
+    # 「$birthdayAll」 → 全員の登録情報を送信
+    if message.content == '$birthdayAll':
         await message.channel.send(birthdayAll())
-    if message.content == '$hello':
-        tdatetime = dt.now()
-        tstr = tdatetime.strftime('%m/%d')
-        print(tstr)
-        json_open = open("../data/birthday.json", "r")
-        json_load = json.load(json_open)
-        for i in range(len(json_load)):
-            # if json_load[i]["birthday"] == datetime.date.today():
-            if json_load[i]["birthday"] == tstr:
-                await message.channel.send(message.author.mention+" "+json_load[i]["name"]+"さん、"+"誕生日おめでとう！！")
+    # 「$help」 → 誕生日キャットの使い方
+    if message.content == '$help':
+        await message.channel.send(help())
 
 client.run(TOKEN)
