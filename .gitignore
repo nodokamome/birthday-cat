@@ -104,5 +104,4 @@ venv.bak/
 .mypy_cache/
 
 #birthday
-birthday.json
-data/
+birthday.sample.json
