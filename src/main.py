@@ -56,7 +56,6 @@ def nextweekbirthdayCheck():
     json_load = json.load(json_open)
     for i in range(len(json_load)):
         if json_load[i]["birthday"] == tstr1 or json_load[i]["birthday"] == tstr2:
-            isNextWeekCheck = True
             list.append(i)
     if len(list) == 0:
         return -1
@@ -75,7 +74,6 @@ def birthdayCheck():
     json_load = json.load(json_open)
     for i in range(len(json_load)):
         if json_load[i]["birthday"] == tstr1 or json_load[i]["birthday"] == tstr2:
-            isCheck = True
             list.append(i)
     if len(list) == 0:
         return -1
