@@ -1,0 +1,17 @@
+version: '3.5'
+services:
+  python:
+    build: .
+    container_name: ${CONTAINER_NAME}
+    tty: true
+    restart: always
+    volumes:
+      - ./app:/usr/src/app
+    command: [sh, -c, pip install --no-cache-dir -r requirements.txt && python src/main.py]
+    networks: 
+      - app-network    # アプリネットワーク
+
+# プロキシネットワーク、アプリネットワークと接続
+networks:
+  app-network:
+    name: app_network
