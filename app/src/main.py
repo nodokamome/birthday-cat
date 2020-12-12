@@ -38,7 +38,7 @@ async def greet():
 
 #「$mybirthday」 聞いてきた人の登録情報を返す
 def mybirthday(id):
-    json_open = open("../data/birthday.json", "r")
+    json_open = open("/usr/src/app/data/birthday.json", "r")
     json_load = json.load(json_open)
     for i in range(len(json_load)):
         if json_load[i]["id"] == id:
@@ -58,7 +58,7 @@ def nextweekbirthdayCheck():
     nextweek = today + timedelta(days=7)
     tstr1 = datetime.strftime(nextweek, '%m/%d')
     tstr2 = datetime.strftime(nextweek, '%-m/%-d')
-    json_open = open("../data/birthday.json", "r")
+    json_open = open("/usr/src/app/data/birthday.json", "r")
     json_load = json.load(json_open)
     for i in range(len(json_load)):
         if json_load[i]["birthday"] == tstr1 or json_load[i]["birthday"] == tstr2:
@@ -81,7 +81,7 @@ def birthdayCheck():
         tmpday = today
     tstr1 = today.strftime('%m/%d')
     tstr2 = today.strftime('%-m/%-d')
-    json_open = open("../data/birthday.json", "r")
+    json_open = open("/usr/src/app/data/birthday.json", "r")
     json_load = json.load(json_open)
     for i in range(len(json_load)):
         if json_load[i]["birthday"] == tstr1 or json_load[i]["birthday"] == tstr2:
@@ -95,7 +95,7 @@ def birthdayCheck():
 # 「$birthdayAll」全員の誕生日を表示させる
 def birthdayAll():
     result = ""
-    json_open = open("../data/birthday.json", "r")
+    json_open = open("/usr/src/app/data/birthday.json", "r")
     json_load = json.load(json_open)
     result += "誕生日&欲しいものリスト\n------------\n"
     for i in range(len(json_load)):
@@ -123,7 +123,7 @@ async def send_message_every_sec():
     tokimemo_channel = client.get_channel(TOKIMEMO＿CHANNEL_ID)
     ippan_channel = client.get_channel(IPPAN_CHANNEL_ID)
     if nextweekbirthdayCheck() != -1 and isNextWeekCheck:
-        json_open = open("../data/birthday.json", "r")
+        json_open = open("/usr/src/app/data/birthday.json", "r")
         json_load = json.load(json_open)
         list = nextweekbirthdayCheck()
         for i in range(len(list)):
@@ -131,7 +131,7 @@ async def send_message_every_sec():
             await ippan_channel.send(name+json_load[list[i]]["birthday"]+"に誕生日です。\nお祝い準備しましょう！"+json_load[list[i]]["wish"])
         isNextWeekCheck = False
     if birthdayCheck() != -1 and isCheck:
-        json_open = open("../data/birthday.json", "r")
+        json_open = open("/usr/src/app/data/birthday.json", "r")
         json_load = json.load(json_open)
         list = birthdayCheck()
         for i in range(len(list)):
@@ -168,7 +168,7 @@ async def on_message(message):
             tmp_birthday = re.findall(
                 r'[0-9]{1,2}/[0-9]{1,2}', message.content)[0]
             print(tmp_birthday)
-            json_open = open("../data/birthday.json", "r")
+            json_open = open("/usr/src/app/data/birthday.json", "r")
             json_load = json.load(json_open)
             for i in range(len(json_load)):
                 if json_load[i]["id"] == message.author.id:
@@ -176,19 +176,19 @@ async def on_message(message):
                         await message.channel.send("誕生日がすでに登録されてますよ！\n間違えて登録した場合は、okamoさんに連絡してね")
                     else:
                         json_load[i]["birthday"] = tmp_birthday
-                        json_open = open("../data/birthday.json", "w")
+                        json_open = open("/usr/src/app/data/birthday.json", "w")
                         json_open.write(json.dumps(json_load))
                         await message.channel.send(json_load[i]["name"] + "さんの誕生日を更新しました")
     # 「$wish 」→ 欲しいものリストを登録
     if message.content.startswith('$wish '):
         wish = message.content[6:]
         print(wish)
-        json_open = open("../data/birthday.json", "r")
+        json_open = open("/usr/src/app/data/birthday.json", "r")
         json_load = json.load(json_open)
         for i in range(len(json_load)):
             if json_load[i]["id"] == message.author.id:
                 json_load[i]["wish"] = wish
-                json_open = open("../data/birthday.json", "w")
+                json_open = open("/usr/src/app/data/birthday.json", "w")
                 json_open.write(json.dumps(json_load))
                 await message.channel.send(json_load[i]["name"]+"さんの欲しいものを更新しました")
     # 「$birthdayAll」 → 全員の登録情報を送信
